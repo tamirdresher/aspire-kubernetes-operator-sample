@@ -1,0 +1,15 @@
+apiVersion: hello.tamirdresher.dev/v1alpha1
+kind: Greeter
+metadata:
+  name: tamir
+  namespace: default
+spec:
+  name: tamir
+---
+apiVersion: hello.tamirdresher.dev/v1alpha1
+kind: Greeter
+metadata:
+  name: torres
+  namespace: default
+spec:
+  name: torres

@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+.kube/
+ts-apphost/node_modules/
+ts-apphost/dist/
+ts-apphost/.agents/
+operator/__debug_bin*

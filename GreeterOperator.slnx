@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/apphost/">
+    <Project Path="apphost/GreeterOperator.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/kind-extensions/">
+    <Project Path="kind-extensions/GreeterOperator.Kind.Extensions.csproj" />
+  </Folder>
+</Solution>
