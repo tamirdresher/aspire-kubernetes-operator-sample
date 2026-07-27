@@ -14,7 +14,7 @@ Aspire generated:
 
 - `apphost.mts` — the AppHost itself (TypeScript ESM module)
 - `.aspire/modules/` — the **generated local SDK** the AppHost imports (`aspire.mts` / `aspire.mjs`). This is Aspire's polyglot SDK bridge; there is no separate `@microsoft/aspire-hosting` npm package to install.
-- `aspire.config.json` — Aspire runtime configuration, including any hosting-integration packages the AppHost references (here, `Aspire.Hosting.Go`)
+- `aspire.config.json` — Aspire runtime configuration, including any hosting-integration packages the AppHost references (here, `Aspire.Hosting.Go` and `CommunityToolkit.Aspire.Hosting.Kind`)
 - `package.json` — Node metadata + scripts. The one dependency is `vscode-jsonrpc`, which the SDK uses to talk to the Aspire runtime; `typescript`, `eslint`, `tsx`, and `nodemon` are dev-only.
 - `tsconfig.apphost.json` — TypeScript compiler options for the AppHost
 - `eslint.config.mjs` — ESLint config for the AppHost
@@ -37,8 +37,9 @@ aspire run
 `aspire run` is what `package.json`'s `aspire:start` script invokes. On start:
 
 1. The AppHost validates that `docker`, `kind`, `kubectl`, and `go` are on `PATH` and fails fast if any are missing.
-2. It runs `scripts/kind-cluster.mjs` as an Aspire executable resource. That script creates or reuses a Kind cluster named `dev-cluster`, waits for it to be ready, applies the CRD, and waits for the CRD to be Established.
-3. It then runs the Go operator via `builder.addGoApp(...)`, threaded with `KUBECONFIG` pointing at the cluster kubeconfig. The operator waits for the cluster setup to complete first.
+2. It declares a persistent Kind cluster named `dev-cluster` with `builder.addKindCluster(...)` from `CommunityToolkit.Aspire.Hosting.Kind`. Aspire creates or reuses that cluster.
+3. It runs `scripts/apply-crd.mjs` as a small Aspire executable resource. The executable is wired with `withKindClusterReference(cluster)`, so Aspire supplies `KUBECONFIG`; the script only applies `config/greeter-crd.yaml` and waits for the CRD to be Established.
+4. It then runs the Go operator via `builder.addGoApp(...)`, also wired with `withKindClusterReference(cluster)`. The operator waits for both the cluster and CRD resource before starting.
 
 Once green, in another shell:
 
@@ -52,7 +53,7 @@ The operator's reconciler creates a `greeting-{name}` ConfigMap for each Greeter
 
 ## The AppHost, in full
 
-`apphost.mts` is ~60 lines of TypeScript. It imports `createBuilder` from the local SDK, wires the cluster and operator resources with `.addExecutable` / `.addGoApp` / `.withEnvironment` / `.waitForCompletion`, and calls `builder.build().run()`. The API mirrors the C# `IDistributedApplicationBuilder` closely: same names, same shape, same mental model.
+`apphost.mts` is ~50 lines of TypeScript. It imports `createBuilder` and `ClusterLifetime` from the local SDK, wires the cluster with `.addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step as a narrow executable workaround, wires the operator with `.addGoApp(..., { packagePath: '.' }).withKindClusterReference(cluster)`, and calls `builder.build().run()`. The API mirrors the C# `IDistributedApplicationBuilder` closely; the remaining mismatch is raw manifest application for Kind clusters, because the published TypeScript binding does not yet expose the local C# sample's `WithManifest` extension.
 
 ## Cleanup
 

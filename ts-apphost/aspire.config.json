@@ -17,6 +17,7 @@
     }
   },
   "packages": {
-    "Aspire.Hosting.Go": "13.4.6-preview.1.26319.6"
+    "Aspire.Hosting.Go": "13.4.6-preview.1.26319.6",
+    "CommunityToolkit.Aspire.Hosting.Kind": "13.4.1-beta.687"
   }
 }

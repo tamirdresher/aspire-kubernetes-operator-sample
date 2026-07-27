@@ -1,38 +1,30 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBuilder } from './.aspire/modules/aspire.mjs';
+import { ClusterLifetime, createBuilder } from './.aspire/modules/aspire.mjs';
 
 const appHostDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(appHostDir, '..');
 const operatorDir = resolve(repoRoot, 'operator');
-const kubeconfigPath = resolve(repoRoot, '.kube', 'dev-cluster.yaml');
 const crdPath = resolve(repoRoot, 'config', 'greeter-crd.yaml');
-const clusterName = 'dev-cluster';
 
 validatePrerequisites(['docker', 'kind', 'kubectl', 'go']);
-mkdirSync(dirname(kubeconfigPath), { recursive: true });
 
 const builder = await createBuilder();
 
-const cluster = builder.addExecutable('dev-cluster', process.execPath, appHostDir, [
-  './scripts/kind-cluster.mjs',
-  '--cluster-name',
-  clusterName,
-  '--kubeconfig',
-  kubeconfigPath,
-  '--crd',
-  crdPath,
-  '--timeout-seconds',
-  '300',
-]);
+const cluster = builder.addKindCluster('dev-cluster').withClusterLifetime(ClusterLifetime.Persistent);
+
+const greeterCrd = builder
+  .addExecutable('greeter-crd', process.execPath, appHostDir, ['./scripts/apply-crd.mjs', '--crd', crdPath])
+  .withKindClusterReference(cluster)
+  .waitFor(cluster);
 
 await builder
   .addGoApp('greeter-operator', operatorDir, { packagePath: '.' })
-  .withEnvironment('KUBECONFIG', kubeconfigPath)
+  .withKindClusterReference(cluster)
   .withEnvironment('GOFLAGS', '-mod=mod')
-  .waitForCompletion(cluster);
+  .waitFor(cluster)
+  .waitForCompletion(greeterCrd);
 
 await builder.build().run();
 
