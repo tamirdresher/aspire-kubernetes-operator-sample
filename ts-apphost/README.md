@@ -23,7 +23,7 @@ Aspire generated:
 
 - Node.js 20.19+, 22.13+, or 24+ (matches `package.json` engines)
 - Docker Desktop, kind, kubectl on `PATH`
-- Go 1.26+ (matches the operator's `go.mod`)
+- Go 1.23+ (matches the operator's `go.mod`)
 - Aspire CLI 13.4.6
 
 ## Run

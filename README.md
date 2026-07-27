@@ -18,7 +18,7 @@ This sample is intentionally small: a Go Kubernetes operator watches a `Greeter`
 Install these before pressing F5:
 
 - .NET 10 SDK
-- Go 1.26 or newer
+- Go 1.23 or newer
 - Docker Desktop, running
 - [`kind`](https://kind.sigs.k8s.io/)
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/)

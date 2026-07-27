@@ -1,4 +1,4 @@
-module github.com/tamirdresher/part2-greeter-operator/operator
+module github.com/tamirdresher/aspire-kubernetes-operator-sample/operator
 
 go 1.23
 

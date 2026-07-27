@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	hellov1alpha1 "github.com/tamirdresher/part2-greeter-operator/operator/api/v1alpha1"
+	hellov1alpha1 "github.com/tamirdresher/aspire-kubernetes-operator-sample/operator/api/v1alpha1"
 )
 
 // GreeterReconciler reconciles a Greeter object.

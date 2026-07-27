@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	hellov1alpha1 "github.com/tamirdresher/part2-greeter-operator/operator/api/v1alpha1"
-	"github.com/tamirdresher/part2-greeter-operator/operator/controllers"
+	hellov1alpha1 "github.com/tamirdresher/aspire-kubernetes-operator-sample/operator/api/v1alpha1"
+	"github.com/tamirdresher/aspire-kubernetes-operator-sample/operator/controllers"
 )
 
 var scheme = runtime.NewScheme()
