@@ -29,6 +29,7 @@ Install these before pressing F5:
   ```
 
   `dlv` installs to `$(go env GOPATH)/bin`, which is often not on `PATH`. Add that directory before debugging.
+  The C# AppHost prints a startup warning when `dlv` is missing; this is expected and only means Go breakpoints will not bind until Delve is installed and on `PATH`.
 
 - VS Code extensions:
   - `microsoft-aspire.aspire-vscode`

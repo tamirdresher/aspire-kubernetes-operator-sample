@@ -50,6 +50,72 @@ internal static class GreeterPrerequisites
                 "Missing prerequisite(s): " + string.Join(", ", missing) +
                 ". Install Docker Desktop, kind, kubectl, and Go, then retry `aspire start`.");
         }
+
+        WarnIfDelveMissing();
+    }
+
+    private static void WarnIfDelveMissing()
+    {
+        if (CanRun("dlv", ["version"]))
+        {
+            return;
+        }
+
+        var goPathBin = TryGetGoPathBin();
+        var pathHint = goPathBin is null ? "$(go env GOPATH)/bin" : goPathBin;
+
+        Console.Error.WriteLine(
+            "WARNING: dlv (Delve) was not found on PATH. Go breakpoints will not bind. " +
+            "Install it with `go install github.com/go-delve/delve/cmd/dlv@latest`, " +
+            $"then make sure {pathHint} is on your PATH.");
+    }
+
+    private static string? TryGetGoPathBin()
+    {
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "go",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                },
+            };
+
+            process.StartInfo.ArgumentList.Add("env");
+            process.StartInfo.ArgumentList.Add("GOPATH");
+
+            process.Start();
+
+            if (!process.WaitForExit(10_000))
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                }
+
+                return null;
+            }
+
+            if (process.ExitCode != 0)
+            {
+                return null;
+            }
+
+            var goPath = process.StandardOutput.ReadToEnd().Trim();
+            return string.IsNullOrWhiteSpace(goPath) ? null : Path.Combine(goPath, "bin");
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static bool CanRun(string fileName, IReadOnlyList<string> arguments)
