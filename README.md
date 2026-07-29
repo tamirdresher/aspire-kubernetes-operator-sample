@@ -7,7 +7,7 @@ This sample is intentionally small: a Go Kubernetes operator watches a `Greeter`
 ## What is included
 
 - `apphost/` — C# Aspire AppHost. It uses `CommunityToolkit.Aspire.Hosting.Kind` `13.4.1-beta.687` from NuGet, starts a persistent Kind cluster, applies the Greeter CRD, starts the Go operator, and adds dashboard commands.
-- `kind-extensions/` — temporary C# extension that adds `WithManifest` for raw Kubernetes manifests. Delete it once the upstream CommunityToolkit/Aspire PR for manifest support is merged and released.
+- `kind-extensions/` — temporary C# extension that adds `WithManifest` for raw Kubernetes manifests to the C# AppHost. The published Kind package does not include manifest support yet; the upstream API is tracked in CommunityToolkit/Aspire PR #1481 as `AddManifest` / `AddManifestFromContent`. Delete this directory once that ships and is exposed by the package.
 - `operator/` — the Go operator built with `controller-runtime`.
 - `ts-apphost/` — TypeScript Aspire AppHost. It models the same Kind cluster + Go operator flow.
 - `config/` — Kubernetes manifests, including the Greeter CRD.
@@ -50,7 +50,7 @@ In VS Code:
 1. Install the recommended extensions if prompted. `.vscode/extensions.json` surfaces the prompt automatically.
 2. Make sure Docker Desktop is running.
 3. Open `operator/controllers/greeter_controller.go`.
-4. Set a breakpoint at line 36 in `Reconcile()`.
+4. Set a breakpoint inside `Reconcile()` in `operator/controllers/greeter_controller.go`, for example on the line that builds the ConfigMap message.
 5. Press F5 and choose **Debug Aspire AppHost**.
 6. When the dashboard opens, click **Apply Greeter (timestamped)** on the `dev-cluster` resource.
 7. The breakpoint hits.
@@ -84,9 +84,11 @@ $env:GOMAXPROCS = "2"
 aspire run
 ```
 
-It uses the same Go operator and the same Greeter CRD, but the Kind integration is different. `CommunityToolkit.Aspire.Hosting.Kind` is a C# NuGet package, so the TypeScript AppHost cannot consume it directly. Instead, `ts-apphost/scripts/kind-cluster.mjs` creates/updates the Kind cluster and applies the CRD, while `apphost.mts` starts the operator with `addGoApp`.
+It uses the same Go operator and the same Greeter CRD. `ts-apphost/aspire.config.json` lists both `Aspire.Hosting.Go` and `CommunityToolkit.Aspire.Hosting.Kind` in its `packages` block; Aspire projects those C# hosting integrations into TypeScript and generates bindings under `ts-apphost/.aspire/modules/`.
 
-The TypeScript AppHost sets `packagePath: '.'` for the Go operator. That value is intentional; see the gotcha below.
+`ts-apphost/apphost.mts` declares the persistent Kind cluster with `addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step with `withKindClusterReference(cluster)`, and starts the operator with `addGoApp(..., { packagePath: '.' })`. The `packagePath: '.'` value is intentional; see the gotcha below.
+
+`scripts/apply-crd.mjs` exists only because the published Kind TypeScript binding does not yet generate a manifest API such as `withManifest`. The script is deliberately narrow: Aspire supplies `KUBECONFIG`, then the script applies `config/greeter-crd.yaml` and waits for `greeters.hello.tamirdresher.dev` to become Established. Once the upstream manifest API in CommunityToolkit/Aspire PR #1481 (`AddManifest` / `AddManifestFromContent`) ships and is projected into TypeScript, this executable helper can be deleted.
 
 ## The `packagePath` gotcha
 
@@ -102,9 +104,9 @@ Do not pass `"./main.go"`. `go run` tolerates a filename, so the process may app
 
 ## Why `kind-extensions/` exists
 
-The published `CommunityToolkit.Aspire.Hosting.Kind` package does not yet include `WithManifest`. This sample needs manifest support to apply the Greeter CRD during AppHost startup.
+The published `CommunityToolkit.Aspire.Hosting.Kind` package does not yet include manifest support. This sample needs manifest support to apply the Greeter CRD during AppHost startup.
 
-`kind-extensions/` is a small gap-filler with the same shape as the upstream manifest work. Once the upstream PR is merged and released, remove this directory, bump the package version, and call the package-provided manifest API instead.
+`kind-extensions/` is a small gap-filler with the same shape as the upstream manifest work. The upstream API is tracked in CommunityToolkit/Aspire PR #1481 as `AddManifest` / `AddManifestFromContent`. Once it ships in the published package, remove this directory, bump the package version, and call the package-provided manifest API instead.
 
 ## Cleanup
 
