@@ -6,6 +6,15 @@
       "type": "aspire",
       "request": "launch",
       "program": "${workspaceFolder}/apphost/GreeterOperator.AppHost.csproj"
+    },
+    {
+      "name": "Debug Aspire TypeScript AppHost",
+      "type": "aspire",
+      "request": "launch",
+      "program": "${workspaceFolder}/ts-apphost/apphost.mts",
+      "env": {
+        "DCP_IDE_REQUEST_TIMEOUT_SECONDS": "900"
+      }
     }
   ]
 }

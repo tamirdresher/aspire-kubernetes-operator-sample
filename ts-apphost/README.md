@@ -51,6 +51,18 @@ kubectl --context kind-dev-cluster get greeter tamir -o yaml
 
 The operator's reconciler creates a `greeting-{name}` ConfigMap for each Greeter, with `message: "Hello, {name}!"`. Delete a Greeter and its ConfigMap is garbage-collected via the owner reference set by the reconciler.
 
+## Debug from VS Code
+
+When opening the repository root in VS Code, select **Debug Aspire TypeScript AppHost** and press F5. The repo-root `.vscode/launch.json` points the Aspire debugger at this AppHost source file:
+
+```jsonc
+"program": "${workspaceFolder}/ts-apphost/apphost.mts"
+```
+
+That direct `.mts` path is intentional. The Aspire VS Code extension classifies `.mts` as a TypeScript AppHost and starts the Node AppHost debugger path. `aspire.config.json` still declares `"path": "apphost.mts"` and `"language": "typescript/nodejs"` for CLI discovery when running from this directory.
+
+The launch configuration also sets `DCP_IDE_REQUEST_TIMEOUT_SECONDS=900` to give the Go debugger enough time for a cold `dlv` build before DCP reports a timeout.
+
 ## The AppHost, in full
 
 `apphost.mts` is ~50 lines of TypeScript. It imports `createBuilder` and `ClusterLifetime` from the local SDK, wires the cluster with `.addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step as a narrow executable workaround, wires the operator with `.addGoApp(..., { packagePath: '.' }).withKindClusterReference(cluster)`, and calls `builder.build().run()`. The API mirrors the C# `IDistributedApplicationBuilder` closely; the remaining mismatch is raw manifest application for Kind clusters, because the published Kind resource binding does not yet generate a manifest method such as `withManifest`. The upstream API is tracked in CommunityToolkit/Aspire PR #1481 as `AddManifest` / `AddManifestFromContent`; once that ships and is projected into TypeScript, `scripts/apply-crd.mjs` can be deleted and the CRD can be modeled directly in the AppHost.

@@ -90,6 +90,20 @@ It uses the same Go operator and the same Greeter CRD. `ts-apphost/aspire.config
 
 `scripts/apply-crd.mjs` exists only because the published Kind TypeScript binding does not yet generate a manifest API such as `withManifest`. The script is deliberately narrow: Aspire supplies `KUBECONFIG`, then the script applies `config/greeter-crd.yaml` and waits for `greeters.hello.tamirdresher.dev` to become Established. Once the upstream manifest API in CommunityToolkit/Aspire PR #1481 (`AddManifest` / `AddManifestFromContent`) ships and is projected into TypeScript, this executable helper can be deleted.
 
+### TypeScript AppHost + single-F5 debugging
+
+The repo-root `.vscode/launch.json` includes **Debug Aspire TypeScript AppHost**. Select that configuration and press F5 from the repository root.
+
+The Aspire VS Code debugger supports TypeScript AppHosts by pointing `program` at the AppHost source file:
+
+```jsonc
+"program": "${workspaceFolder}/ts-apphost/apphost.mts"
+```
+
+`ts-apphost/aspire.config.json` still matters: the Aspire CLI uses its `appHost.path` and `appHost.language` metadata when running from `ts-apphost/`, and the VS Code extension also discovers configured AppHost paths from `aspire.config.json`. The launch configuration uses the direct `.mts` path so the extension classifies the AppHost as TypeScript and starts the Node debugger path.
+
+The TypeScript launch configuration sets `DCP_IDE_REQUEST_TIMEOUT_SECONDS=900` because cold Go/Delve builds can exceed the default DCP request timeout on first run.
+
 ## The `packagePath` gotcha
 
 `AddGoApp`'s third parameter is `packagePath`: a Go package directory relative to `appDirectory`, not an entry-file path.
@@ -117,5 +131,4 @@ kind delete cluster --name dev-cluster
 ## Learn more
 
 See [ts-apphost/README.md](ts-apphost/README.md) for TypeScript-specific notes on Aspire's TS AppHost scaffold and the local `.aspire/modules/aspire.mjs` SDK.
-
 
