@@ -88,6 +88,11 @@ It uses the same Go operator and the same Greeter CRD. `ts-apphost/aspire.config
 
 `ts-apphost/apphost.mts` declares the persistent Kind cluster with `addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step with `withKindClusterReference(cluster)`, and starts the operator with `addGoApp(..., { packagePath: '.' })`. The `packagePath: '.'` value is intentional; see the gotcha below.
 
+The TypeScript AppHost also adds the same dashboard commands to `dev-cluster` as the C# AppHost:
+
+- **Apply Greeter (timestamped)** creates a fresh `greeter-{yyyyMMdd-HHmmss}` resource with `spec.name: tamir-{yyyyMMdd-HHmmss}`.
+- **Delete all Greeters** removes all Greeter custom resources from the `default` namespace.
+
 `scripts/apply-crd.mjs` exists only because the published Kind TypeScript binding does not yet generate a manifest API such as `withManifest`. The script is deliberately narrow: Aspire supplies `KUBECONFIG`, then the script applies `config/greeter-crd.yaml` and waits for `greeters.hello.tamirdresher.dev` to become Established. Once the upstream manifest API in CommunityToolkit/Aspire PR #1481 (`AddManifest` / `AddManifestFromContent`) ships and is projected into TypeScript, this executable helper can be deleted.
 
 ### TypeScript AppHost + single-F5 debugging
@@ -131,4 +136,3 @@ kind delete cluster --name dev-cluster
 ## Learn more
 
 See [ts-apphost/README.md](ts-apphost/README.md) for TypeScript-specific notes on Aspire's TS AppHost scaffold and the local `.aspire/modules/aspire.mjs` SDK.
-

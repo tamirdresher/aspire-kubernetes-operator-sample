@@ -39,14 +39,15 @@ aspire run
 1. The AppHost validates that `docker`, `kind`, `kubectl`, and `go` are on `PATH` and fails fast if any are missing.
 2. It declares a persistent Kind cluster named `dev-cluster` with `builder.addKindCluster(...)` from `CommunityToolkit.Aspire.Hosting.Kind`. Aspire creates or reuses that cluster.
 3. It runs `scripts/apply-crd.mjs` as a small Aspire executable resource. The executable is wired with `withKindClusterReference(cluster)`, so Aspire supplies `KUBECONFIG`; the script only applies `config/greeter-crd.yaml` and waits for `greeters.hello.tamirdresher.dev` to be Established.
-4. It then runs the Go operator via `builder.addGoApp(...)`, also wired with `withKindClusterReference(cluster)`. The operator waits for both the cluster and CRD resource before starting.
+4. It adds **Apply Greeter (timestamped)** and **Delete all Greeters** dashboard commands to `dev-cluster`.
+5. It then runs the Go operator via `builder.addGoApp(...)`, also wired with `withKindClusterReference(cluster)`. The operator waits for both the cluster and CRD resource before starting.
 
 Once green, in another shell:
 
 ```powershell
-kubectl --context kind-dev-cluster apply -f ..\examples\greeter-sample.yaml
-kubectl --context kind-dev-cluster get configmap greeting-tamir -o yaml
-kubectl --context kind-dev-cluster get greeter tamir -o yaml
+aspire resource dev-cluster apply-greeter --non-interactive
+kubectl --kubeconfig $env:TEMP\aspire-kind\dev-cluster\kubeconfig.yaml get configmap -n default
+aspire resource dev-cluster delete-greeters --non-interactive
 ```
 
 The operator's reconciler creates a `greeting-{name}` ConfigMap for each Greeter, with `message: "Hello, {name}!"`. Delete a Greeter and its ConfigMap is garbage-collected via the owner reference set by the reconciler.
@@ -65,7 +66,7 @@ The launch configuration also sets `DCP_IDE_REQUEST_TIMEOUT_SECONDS=900` to give
 
 ## The AppHost, in full
 
-`apphost.mts` is ~50 lines of TypeScript. It imports `createBuilder` and `ClusterLifetime` from the local SDK, wires the cluster with `.addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step as a narrow executable workaround, wires the operator with `.addGoApp(..., { packagePath: '.' }).withKindClusterReference(cluster)`, and calls `builder.build().run()`. The API mirrors the C# `IDistributedApplicationBuilder` closely; the remaining mismatch is raw manifest application for Kind clusters, because the published Kind resource binding does not yet generate a manifest method such as `withManifest`. The upstream API is tracked in CommunityToolkit/Aspire PR #1481 as `AddManifest` / `AddManifestFromContent`; once that ships and is projected into TypeScript, `scripts/apply-crd.mjs` can be deleted and the CRD can be modeled directly in the AppHost.
+`apphost.mts` imports `createBuilder`, `ClusterLifetime`, and command result helpers from the local SDK, wires the cluster with `.addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, adds the Greeter dashboard commands with `.withCommand(...)`, wires the CRD apply step as a narrow executable workaround, wires the operator with `.addGoApp(..., { packagePath: '.' }).withKindClusterReference(cluster)`, and calls `builder.build().run()`. The API mirrors the C# `IDistributedApplicationBuilder` closely; the remaining mismatch is raw manifest application for Kind clusters, because the published Kind resource binding does not yet generate a manifest method such as `withManifest`. The upstream API is tracked in CommunityToolkit/Aspire PR #1481 as `AddManifest` / `AddManifestFromContent`; once that ships and is projected into TypeScript, `scripts/apply-crd.mjs` can be deleted and the CRD can be modeled directly in the AppHost.
 
 ## Cleanup
 
