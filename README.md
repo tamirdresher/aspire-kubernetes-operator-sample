@@ -86,7 +86,7 @@ aspire run
 
 It uses the same Go operator and the same Greeter CRD. `ts-apphost/aspire.config.json` lists both `Aspire.Hosting.Go` and `CommunityToolkit.Aspire.Hosting.Kind` in its `packages` block; Aspire projects those C# hosting integrations into TypeScript and generates bindings under `ts-apphost/.aspire/modules/`.
 
-`ts-apphost/apphost.mts` declares the persistent Kind cluster with `addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step with `withKindClusterReference(cluster)`, and starts the operator with `addGoApp(..., { packagePath: '.' })`. The `packagePath: '.'` value is intentional; see the gotcha below.
+`ts-apphost/apphost.mts` declares the persistent Kind cluster with `addKindCluster(...).withClusterLifetime(ClusterLifetime.Persistent)`, wires the CRD apply step with the projected Kind API `withKindClusterReference(cluster)`, and starts the operator with `addGoApp(..., { packagePath: '.' })`. The `packagePath: '.'` value is intentional; see the gotcha below.
 
 The TypeScript AppHost also adds the same dashboard commands to `dev-cluster` as the C# AppHost:
 

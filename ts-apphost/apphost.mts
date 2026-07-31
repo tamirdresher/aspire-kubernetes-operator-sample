@@ -1,7 +1,15 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ClusterLifetime, CommandResultFormat, createBuilder, ResourceCommandState } from './.aspire/modules/aspire.mjs';
+import {
+  ClusterLifetime,
+  CommandResultFormat,
+  createBuilder,
+  ResourceCommandState,
+  type ExecuteCommandContext,
+  type ExecuteCommandResult,
+  type WithCommandOptions,
+} from './.aspire/modules/aspire.mjs';
 
 const appHostDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(appHostDir, '..');
@@ -12,66 +20,27 @@ validatePrerequisites(['docker', 'kind', 'kubectl', 'go']);
 
 const builder = await createBuilder();
 
-let cluster = builder.addKindCluster('dev-cluster').withClusterLifetime(ClusterLifetime.Persistent);
-
-cluster = cluster.withCommand(
-  'apply-greeter',
-  'Apply Greeter (timestamped)',
-  async (context) => {
-    const stamp = formatStamp();
-    const crName = `greeter-${stamp}`;
-    const specName = `tamir-${stamp}`;
-    const kubeconfigPath = await getKubeconfigPath(await context.resourceName());
-    const yaml = `apiVersion: hello.tamirdresher.dev/v1alpha1
-kind: Greeter
-metadata:
-  name: ${crName}
-  namespace: default
-spec:
-  name: ${specName}
-`;
-
-    const result = await runKubectl(['--kubeconfig', kubeconfigPath, 'apply', '-f', '-'], yaml);
-
-    if (result.exitCode !== 0) {
-      return commandFailure(`kubectl apply failed for ${crName}.`, result.stderr || result.stdout);
-    }
-
-    return commandSuccess(`Applied ${crName} (spec.name=${specName})`, result.stdout.trim());
+const applyGreeterOptions = {
+  commandOptions: {
+    description: 'Applies a timestamped Greeter custom resource to trigger the operator reconcile loop.',
+    iconName: 'Add',
+    updateState: async () => ResourceCommandState.Enabled,
   },
-  {
-    commandOptions: {
-      description: 'Applies a timestamped Greeter custom resource to trigger the operator reconcile loop.',
-      iconName: 'Add',
-      updateState: async () => ResourceCommandState.Enabled,
-    },
-  },
-);
+} satisfies WithCommandOptions;
 
-cluster = cluster.withCommand(
-  'delete-greeters',
-  'Delete all Greeters',
-  async (context) => {
-    const kubeconfigPath = await getKubeconfigPath(await context.resourceName());
-    const result = await runKubectl(
-      ['--kubeconfig', kubeconfigPath, 'delete', 'greeters', '--all', '-n', 'default', '--ignore-not-found'],
-      null,
-    );
-
-    if (result.exitCode !== 0) {
-      return commandFailure('kubectl delete greeters --all failed.', result.stderr || result.stdout);
-    }
-
-    return commandSuccess('Deleted all Greeters.', result.stdout.trim());
+const deleteGreetersOptions = {
+  commandOptions: {
+    description: 'Deletes all Greeter custom resources from the default namespace.',
+    iconName: 'Delete',
+    updateState: async () => ResourceCommandState.Enabled,
   },
-  {
-    commandOptions: {
-      description: 'Deletes all Greeter custom resources from the default namespace.',
-      iconName: 'Delete',
-      updateState: async () => ResourceCommandState.Enabled,
-    },
-  },
-);
+} satisfies WithCommandOptions;
+
+const cluster = builder
+  .addKindCluster('dev-cluster')
+  .withClusterLifetime(ClusterLifetime.Persistent)
+  .withCommand('apply-greeter', 'Apply Greeter (timestamped)', applyGreeter, applyGreeterOptions)
+  .withCommand('delete-greeters', 'Delete all Greeters', deleteGreeters, deleteGreetersOptions);
 
 const greeterCrd = builder
   .addExecutable('greeter-crd', process.execPath, appHostDir, ['./scripts/apply-crd.mjs', '--crd', crdPath])
@@ -123,6 +92,43 @@ function formatStamp(date = new Date()): string {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(
     date.getMinutes(),
   )}${pad(date.getSeconds())}`;
+}
+
+async function applyGreeter(context: ExecuteCommandContext): Promise<ExecuteCommandResult> {
+  const stamp = formatStamp();
+  const crName = `greeter-${stamp}`;
+  const specName = `tamir-${stamp}`;
+  const kubeconfigPath = await getKubeconfigPath(await context.resourceName());
+  const yaml = `apiVersion: hello.tamirdresher.dev/v1alpha1
+kind: Greeter
+metadata:
+  name: ${crName}
+  namespace: default
+spec:
+  name: ${specName}
+`;
+
+  const result = await runKubectl(['--kubeconfig', kubeconfigPath, 'apply', '-f', '-'], yaml);
+
+  if (result.exitCode !== 0) {
+    return commandFailure(`kubectl apply failed for ${crName}.`, result.stderr || result.stdout);
+  }
+
+  return commandSuccess(`Applied ${crName} (spec.name=${specName})`, result.stdout.trim());
+}
+
+async function deleteGreeters(context: ExecuteCommandContext): Promise<ExecuteCommandResult> {
+  const kubeconfigPath = await getKubeconfigPath(await context.resourceName());
+  const result = await runKubectl(
+    ['--kubeconfig', kubeconfigPath, 'delete', 'greeters', '--all', '-n', 'default', '--ignore-not-found'],
+    null,
+  );
+
+  if (result.exitCode !== 0) {
+    return commandFailure('kubectl delete greeters --all failed.', result.stderr || result.stdout);
+  }
+
+  return commandSuccess('Deleted all Greeters.', result.stdout.trim());
 }
 
 async function getKubeconfigPath(resourceName: string): Promise<string> {
@@ -193,7 +199,7 @@ async function runProcess(
   });
 }
 
-function commandSuccess(message: string, value: string) {
+function commandSuccess(message: string, value: string): ExecuteCommandResult {
   return {
     success: true,
     message,
@@ -205,7 +211,7 @@ function commandSuccess(message: string, value: string) {
   };
 }
 
-function commandFailure(message: string, value: string) {
+function commandFailure(message: string, value: string): ExecuteCommandResult {
   return {
     success: false,
     errorMessage: message,
